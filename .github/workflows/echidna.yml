@@ -46,7 +46,7 @@ jobs:
           key: abi-${{ matrix.testName }}-${{ hashFiles('**/sorted_crytic_solc.json') }}-v2
 
       - name: Fuzz ${{ matrix.testName }}
-        uses: crytic/echidna-action@v1
+        uses: crytic/echidna-action@dev-echidna-version
         with:
           files: echidna/${{ matrix.testName }}.sol
           contract: ${{ matrix.testName }}
@@ -57,6 +57,7 @@ jobs:
           seq-len: 100
           solc-args: --optimize --optimize-runs 200
           solc-version: 0.6.12
+          echidna-version: v1.7.3
 
       - name: Upload ${{ matrix.testName }} Coverage
         uses: actions/upload-artifact@v2

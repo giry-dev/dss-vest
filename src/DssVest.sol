@@ -55,6 +55,8 @@ abstract contract DssVest {
     event Yank(uint256 indexed id, uint256 end);
     event Restrict(uint256 indexed id);
     event Unrestrict(uint256 indexed id);
+    event Bless(uint256 indexed id);
+    event Unbless(uint256 indexed id);
 
 
     // --- Auth ---
@@ -83,6 +85,7 @@ abstract contract DssVest {
         uint8   res;   // Restricted
         uint128 tot;   // Total reward amount
         uint128 rxd;   // Amount of vest claimed
+        uint8   bls;   // Blessed (uninterruptible)
     }
     mapping (uint256 => Award) public awards;
     uint256 public ids;
@@ -120,6 +123,10 @@ abstract contract DssVest {
 
     function rxd(uint256 _id) external view returns (uint256) {
         return awards[_id].rxd;
+    }
+
+    function bls(uint256 _id) external view returns (uint256) {
+        return awards[_id].bls;
     }
 
     /**
@@ -190,7 +197,8 @@ abstract contract DssVest {
             tot: toUint128(_tot),
             rxd: 0,
             mgr: _mgr,
-            res: 0
+            res: 0,
+            bls: 0
         });
         emit Init(id, _usr);
     }
@@ -295,6 +303,30 @@ abstract contract DssVest {
     }
 
     /**
+        @dev Make vesting uninterruptible
+        @param _id The id of the vesting contract
+    */
+    function bless(uint256 _id) external lock {
+        address usr_ = awards[_id].usr;
+        require(usr_ != address(0), "DssVest/invalid-award");
+        require(wards[msg.sender] == 1, "DssVest/not-authorized");
+        awards[_id].bls = 1;
+        emit Bless(_id);
+    }
+
+    /**
+        @dev Make vesting interruptible
+        @param _id The id of the vesting contract
+    */
+    function unbless(uint256 _id) external lock {
+        address usr_ = awards[_id].usr;
+        require(usr_ != address(0), "DssVest/invalid-award");
+        require(wards[msg.sender] == 1, "DssVest/not-authorized");
+        awards[_id].bls = 0;
+        emit Unbless(_id);
+    }
+
+    /**
         @dev Allows governance or the owner to enable permissionless vesting
         @param _id The id of the vesting contract
     */
@@ -332,6 +364,7 @@ abstract contract DssVest {
         require(wards[msg.sender] == 1 || awards[_id].mgr == msg.sender, "DssVest/not-authorized");
         Award memory _award = awards[_id];
         require(_award.usr != address(0), "DssVest/invalid-award");
+        require(_award.bls == 0, "DssVest/no-yanking-blessed");
         if (_end < block.timestamp) {
             _end = block.timestamp;
         }

@@ -177,7 +177,7 @@ abstract contract DssVest {
         @param _mgr An optional manager for the contract. Can yank if vesting ends prematurely.
         @return id  The id of the vesting contract
     */
-    function create(address _usr, uint256 _tot, uint256 _bgn, uint256 _tau, uint256 _eta, address _mgr) external auth lock returns (uint256 id) {
+    function _create(address _usr, uint256 _tot, uint256 _bgn, uint256 _tau, uint256 _eta, address _mgr) internal auth lock returns (uint256 id) {
         require(_usr != address(0),                        "DssVest/invalid-user");
         require(_tot > 0,                                  "DssVest/no-vest-total-amount");
         require(_bgn < add(block.timestamp, TWENTY_YEARS), "DssVest/bgn-too-far");
@@ -201,6 +201,39 @@ abstract contract DssVest {
             bls: 0
         });
         emit Init(id, _usr);
+    }
+
+    /**
+        @dev Govanance adds a vesting contract
+        @param _usr The recipient of the reward
+        @param _tot The total amount of the vest
+        @param _bgn The starting timestamp of the vest
+        @param _tau The duration of the vest (in seconds)
+        @param _eta The cliff duration in seconds (i.e. 1 years)
+        @param _mgr An optional manager for the contract. Can yank if vesting ends prematurely.
+        @return id  The id of the vesting contract
+    */
+    function create(address _usr, uint256 _tot, uint256 _bgn, uint256 _tau, uint256 _eta, address _mgr) external returns (uint256 id) {
+        return _create(_usr,_tot,_bgn,_tau,_eta,_mgr);
+    }
+
+    /**
+        @dev Govanance adds a vesting contract with all options customizable
+        @param _usr The recipient of the reward
+        @param _tot The total amount of the vest
+        @param _bgn The starting timestamp of the vest
+        @param _tau The duration of the vest (in seconds)
+        @param _eta The cliff duration in seconds (i.e. 1 years)
+        @param _mgr An optional manager for the contract. Can yank if vesting ends prematurely.
+        @param _res Whether the vesting can be claimed by the usr only
+        @param _bls Whether the vesting is uninterruptible
+        @return id  The id of the vesting contract
+    */
+    function create_custom(address _usr, uint256 _tot, uint256 _bgn, uint256 _tau, uint256 _eta, address _mgr, bool _res, bool _bls) external returns (uint256 id) {
+        id = _create(_usr,_tot,_bgn,_tau,_eta,_mgr);
+        if (_res) { _restrict(id); }
+        if (_bls) { _bless(id); }
+        return id;
     }
 
     /**
@@ -294,7 +327,7 @@ abstract contract DssVest {
         @dev Allows governance or the owner to restrict vesting to the owner only
         @param _id The id of the vesting contract
     */
-    function restrict(uint256 _id) external lock {
+    function _restrict(uint256 _id) internal lock {
         address usr_ = awards[_id].usr;
         require(usr_ != address(0), "DssVest/invalid-award");
         require(wards[msg.sender] == 1 || usr_ == msg.sender, "DssVest/not-authorized");
@@ -303,15 +336,31 @@ abstract contract DssVest {
     }
 
     /**
+        @dev Allows governance or the owner to restrict vesting to the owner only
+        @param _id The id of the vesting contract
+    */
+    function restrict(uint256 _id) external {
+        _restrict(_id);
+    }
+
+    /**
         @dev Make vesting uninterruptible
         @param _id The id of the vesting contract
     */
-    function bless(uint256 _id) external lock {
+    function _bless(uint256 _id) internal lock {
         address usr_ = awards[_id].usr;
         require(usr_ != address(0), "DssVest/invalid-award");
         require(wards[msg.sender] == 1, "DssVest/not-authorized");
         awards[_id].bls = 1;
         emit Bless(_id);
+    }
+
+    /**
+        @dev Make vesting uninterruptible
+        @param _id The id of the vesting contract
+    */
+    function bless(uint256 _id) external {
+        _bless(_id);
     }
 
     /**

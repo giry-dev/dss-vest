@@ -347,10 +347,9 @@ abstract contract DssVest {
         @dev Make vesting uninterruptible
         @param _id The id of the vesting contract
     */
-    function _bless(uint256 _id) internal lock {
+    function _bless(uint256 _id) internal lock auth {
         address usr_ = awards[_id].usr;
         require(usr_ != address(0), "DssVest/invalid-award");
-        require(wards[msg.sender] == 1, "DssVest/not-authorized");
         awards[_id].bls = 1;
         emit Bless(_id);
     }
@@ -367,10 +366,9 @@ abstract contract DssVest {
         @dev Make vesting interruptible
         @param _id The id of the vesting contract
     */
-    function unbless(uint256 _id) external lock {
+    function unbless(uint256 _id) external lock auth {
         address usr_ = awards[_id].usr;
         require(usr_ != address(0), "DssVest/invalid-award");
-        require(wards[msg.sender] == 1, "DssVest/not-authorized");
         awards[_id].bls = 0;
         emit Unbless(_id);
     }
